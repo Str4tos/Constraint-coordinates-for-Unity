@@ -1,4 +1,6 @@
-﻿using UnityEngine;
+﻿/* Created by Str4tos. 2017 */
+
+using UnityEngine;
 using System.Collections;
 
 [System.Serializable]
@@ -30,30 +32,38 @@ public struct ConstraintCoord
         this.min = min;
         this.max = max;
     }
-
+    /// <summary>
+    /// Return true if empty or min & max equals zero.
+    /// </summary>
     public bool IsZero()
     {
         return min == default(float) && max == default(float);
     }
     /// <summary>
-    /// Return clamp value in min & max.
+    /// Return clamped value in range between min and max.
     /// </summary>
     public float Clamp(float position)
     {
         return Mathf.Clamp(position, min, max);
     }
     /// <summary>
-    /// Return random value in range (min,max)
+    /// Return random value in range between min and max.
     /// </summary>
     public float GetRandom()
     {
         return Random.Range(min, max);
     }
-    public bool IsOutOfLimits(float position)
+    /// <summary>
+    /// Return true if value out of limit coordinates.
+    /// </summary>
+    public bool IsOutOfLimits(float value)
     {
-        return position > max || position < min;
+        return value > max || value < min;
     }
-    public bool IsOutOfLimits(float position, bool directionToMax)
+    /// <summary>
+    /// Return true if value out of limit coordinates considering the direction.
+    /// </summary>
+    public bool IsOutOfLimits(float value, bool directionToMax)
     {
 #if UNITY_EDITOR
         if (max < min)
@@ -61,12 +71,12 @@ public struct ConstraintCoord
 #endif
         if (directionToMax)
         {
-            if (position > max)
+            if (value > max)
                 return true;
         }
         else
         {
-            if (position < min)
+            if (value < min)
                 return true;
         }
         return false;

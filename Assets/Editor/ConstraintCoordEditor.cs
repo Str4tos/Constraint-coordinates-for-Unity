@@ -1,4 +1,7 @@
-﻿#define CoordsIn3D
+﻿/* Created by Str4tos. 2017 */
+
+// If not using Z-Axis then turn off the #define line
+#define CoordsIn3D
 
 using UnityEngine;
 using UnityEditor;
@@ -167,8 +170,7 @@ public class ConstraintCoordEditor : PropertyDrawer
         {
             //get the name before it's gone
             displayName = property.displayName;
-
-            //get the X and Y values
+            
             property.Next(true);
             min = property.Copy();
             property.Next(true);
@@ -211,7 +213,7 @@ public class ConstraintCoordEditor : PropertyDrawer
             optionButtons.width = onePart;
 
             if (!isEdditMode)
-                if (GUI.Button(optionButtons, "Cop"))
+                if (GUI.Button(optionButtons, "Copy"))
                 {
                     copyValues = new Vector2(min.floatValue, max.floatValue);
                 }
@@ -219,7 +221,7 @@ public class ConstraintCoordEditor : PropertyDrawer
             optionButtons.x += onePart;
 
             if (!isEdditMode && copyValues != Vector2.zero)
-                if (GUI.Button(optionButtons, "Past"))
+                if (GUI.Button(optionButtons, "Paste"))
                 {
                     min.floatValue = copyValues.x;
                     max.floatValue = copyValues.y;
