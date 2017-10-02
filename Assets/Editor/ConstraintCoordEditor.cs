@@ -3,10 +3,16 @@
 // If not using Z-Axis then turn off the #define line
 #define CoordsIn3D
 
+//#define CopyVectorProperty
+
 using UnityEngine;
 using UnityEditor;
 
+#if CopyVectorProperty
+[CustomPropertyDrawer(typeof(CoordsFromVector))]
+#else
 [CustomPropertyDrawer(typeof(ConstraintCoord))]
+#endif
 public class ConstraintCoordEditor : PropertyDrawer
 {
     public enum Axis
@@ -23,6 +29,7 @@ public class ConstraintCoordEditor : PropertyDrawer
     private string displayName;
     private bool isCache = false;
 
+    private static bool isLocalCoords;
     private static bool isShowOptions;
     private static Vector2 copyValues;
 
@@ -51,38 +58,49 @@ public class ConstraintCoordEditor : PropertyDrawer
     {
         try
         {
-            Vector3 minimumPoint = targetTran.position;
+            Vector3 minimumPoint = isLocalCoords ? targetTran.localPosition : targetTran.position;
             Vector3 maximumPoint = minimumPoint;
+            ConstraintCoord result = new ConstraintCoord(minProperty.floatValue, maxProperty.floatValue);
+
+            if (isLocalCoords)
+                result.TransformToWorld(targetTran);
 
             switch (currAxis)
             {
                 default:
-                    minimumPoint.x = minProperty.floatValue;
-                    maximumPoint.x = maxProperty.floatValue;
+                    minimumPoint.x = result.min;
+                    maximumPoint.x = result.max;
 
-                    minProperty.floatValue = RoundValue(Handles.Slider(minimumPoint, Vector3.left).x);
-                    maxProperty.floatValue = RoundValue(Handles.Slider(maximumPoint, Vector3.right).x);
+                    result.min = RoundValue(Handles.Slider(minimumPoint, Vector3.left).x);
+                    result.max = RoundValue(Handles.Slider(maximumPoint, Vector3.right).x);
                     break;
                 case Axis.YAxis:
-                    minProperty.floatValue = minProperty.floatValue;
-                    maximumPoint.y = maxProperty.floatValue;
+                    minimumPoint.y = result.min;
+                    maximumPoint.y = result.max;
 
-                    minProperty.floatValue = RoundValue(Handles.Slider(minimumPoint, Vector3.down).y);
-                    maxProperty.floatValue = RoundValue(Handles.Slider(maximumPoint, Vector3.up).y);
+                    result.min = RoundValue(Handles.Slider(minimumPoint, Vector3.down).y);
+                    result.max = RoundValue(Handles.Slider(maximumPoint, Vector3.up).y);
                     break;
 #if CoordsIn3D
                 case Axis.ZAxis:
-                    minimumPoint.z = minProperty.floatValue;
-                    maximumPoint.z = maxProperty.floatValue;
+                    minimumPoint.z = result.min;
+                    maximumPoint.z = result.max;
 
-                    minProperty.floatValue = RoundValue(Handles.Slider(minimumPoint, Vector3.back).z);
-                    maxProperty.floatValue = RoundValue(Handles.Slider(maximumPoint, Vector3.forward).z);
+                    result.min = RoundValue(Handles.Slider(minimumPoint, Vector3.back).z);
+                    result.max = RoundValue(Handles.Slider(maximumPoint, Vector3.forward).z);
                     break;
 #endif
             }
-            Handles.color = Color.green;
+            Handles.color = Color.magenta;
             Handles.DrawLine(minimumPoint, maximumPoint);
-            
+            Handles.DrawLine(minimumPoint + Vector3.up, minimumPoint + Vector3.down);
+            Handles.DrawLine(maximumPoint + Vector3.up, maximumPoint + Vector3.down);
+
+            if (isLocalCoords)
+                result.TransformToLocal(targetTran);
+
+            minProperty.floatValue = result.min;
+            maxProperty.floatValue = result.max;
             maxProperty.serializedObject.ApplyModifiedProperties();
         }
         catch
@@ -133,6 +151,8 @@ public class ConstraintCoordEditor : PropertyDrawer
 
         contentPosition.x += onePart;
         ShowCoordValue(contentPosition, max, label);
+        if (EditorApplication.isPlaying)
+            return;
 
         contentPosition.width -= 10.0f;
         contentPosition.x += onePart + 10.0f;
@@ -151,6 +171,7 @@ public class ConstraintCoordEditor : PropertyDrawer
         }
 
         ShowOptions(position, property, contentPosition.y);
+        GUI.color = Color.white;
     }
     public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
     {
@@ -170,18 +191,40 @@ public class ConstraintCoordEditor : PropertyDrawer
         {
             //get the name before it's gone
             displayName = property.displayName;
-            
+
             property.Next(true);
             min = property.Copy();
             property.Next(true);
             max = property.Copy();
-
             isCache = true;
+
+            if (min.floatValue == 0.0f && max.floatValue == 0.0f)
+            {
+#if CopyVectorProperty
+                CoordsFromVector coordsFromVector = attribute as CoordsFromVector;
+                if (coordsFromVector != null)
+                {
+                    var searchProperty = property.serializedObject.FindProperty(coordsFromVector.originPropertyName);
+                    if (searchProperty.propertyType == SerializedPropertyType.Vector2)
+                    {
+                        Vector2 searchVector = searchProperty.vector2Value;
+                        min.floatValue = searchVector.x;
+                        max.floatValue = searchVector.y;
+                        property.serializedObject.ApplyModifiedProperties();
+                    }
+                }
+#else
+                Vector3 worldPosition = ((Component)property.serializedObject.targetObject).transform.position;
+                min.floatValue = worldPosition.x;
+                max.floatValue = worldPosition.y;
+                property.serializedObject.ApplyModifiedProperties();
+#endif
+            }
         }
     }
     private void ShowCoordValue(Rect contentPosition, SerializedProperty value, GUIContent label)
     {
-        if (isEdditMode)
+        if (isEdditMode || EditorApplication.isPlaying)
         {
             EditorGUI.LabelField(contentPosition, value.name + ": " + value.floatValue);
         }
@@ -206,9 +249,9 @@ public class ConstraintCoordEditor : PropertyDrawer
             GUI.color = Color.white;
             float onePart =
 #if CoordsIn3D
-                optionButtons.width / 5.0f;
+                optionButtons.width / 6.0f;
 #else
-                optionButtons.width / 4.0f;
+                optionButtons.width / 5.0f;
 #endif
             optionButtons.width = onePart;
 
@@ -219,13 +262,18 @@ public class ConstraintCoordEditor : PropertyDrawer
                 }
 
             optionButtons.x += onePart;
-
             if (!isEdditMode && copyValues != Vector2.zero)
                 if (GUI.Button(optionButtons, "Paste"))
                 {
                     min.floatValue = copyValues.x;
                     max.floatValue = copyValues.y;
                 }
+
+            optionButtons.x += onePart;
+            if (GUI.Button(optionButtons, isLocalCoords ? "Local" : "World"))
+            {
+                isLocalCoords = !isLocalCoords;
+            }
 
             if (isEdditMode)
                 GUI.color = Color.green;

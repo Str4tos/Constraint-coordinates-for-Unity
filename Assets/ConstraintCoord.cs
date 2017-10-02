@@ -1,5 +1,7 @@
 ﻿/* Created by Str4tos. 2017 */
 
+//#define CopyVectorProperty
+
 using UnityEngine;
 using System.Collections;
 
@@ -32,6 +34,7 @@ public struct ConstraintCoord
         this.min = min;
         this.max = max;
     }
+
     /// <summary>
     /// Return true if empty or min & max equals zero.
     /// </summary>
@@ -42,9 +45,9 @@ public struct ConstraintCoord
     /// <summary>
     /// Return clamped value in range between min and max.
     /// </summary>
-    public float Clamp(float position)
+    public float Clamp(float value)
     {
-        return Mathf.Clamp(position, min, max);
+        return Mathf.Clamp(value, min, max);
     }
     /// <summary>
     /// Return random value in range between min and max.
@@ -81,6 +84,43 @@ public struct ConstraintCoord
         }
         return false;
     }
+    /// <summary>
+    /// Return true if value closer maximum coordinate.
+    /// </summary>
+    /// <param name="offset">Offset of maximum</param>
+    public bool IsCloserMaxBound(float value, float offset = 0.0f)
+    {
+        return (value - max + offset) < (min - value);
+    }
+    /// <summary>
+    /// Return true if value closer minimum coordinate.
+    /// </summary>
+    /// <param name="offset">Offset of minimum</param>
+    public bool IsCloserMinBound(float value, float offset = 0.0f)
+    {
+        return (value - max) > (min + offset - value);
+    }
+
+    /// <summary>
+    /// Transform minimum and maximum coordinates to world space from target.
+    /// Error if coordinates already in world space.
+    /// </summary>
+    public void TransformToWorld(Transform target)
+    {
+        float offset = max - min;
+        min = target.TransformPoint(min, 0.0f, 0.0f).x;
+        max = min + offset;
+    }
+    /// <summary>
+    /// Transform minimum and maximum coordinates to local space from target.
+    /// Error if coordinates already in local space.
+    /// </summary>
+    public void TransformToLocal(Transform target)
+    {
+        float offset = max - min;
+        min = target.InverseTransformPoint(min, 0.0f, 0.0f).x;
+        max = min + offset;
+    }
 
     public static implicit operator Vector2(ConstraintCoord l)
     {
@@ -99,3 +139,14 @@ public struct ConstraintCoord
         return !limit.IsZero();
     }
 }
+
+#if UNITY_EDITOR && CopyVectorProperty
+public class CoordsFromVector : PropertyAttribute
+{
+    public readonly string originPropertyName;
+    public CoordsFromVector(string originPropertyName)
+    {
+        this.originPropertyName = originPropertyName;
+    }
+}
+#endif
