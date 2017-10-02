@@ -15,7 +15,7 @@ Fields float min, max.<br>
 
 # Editor
 Visual structure<br>
-![coordsinspector](https://user-images.githubusercontent.com/22005013/31046816-9ee48e38-a608-11e7-9b68-b3a6a1e0bbb8.JPG)
+![inspector](https://user-images.githubusercontent.com/22005013/31079391-24d03872-a78e-11e7-8dd1-e3a996bb004a.JPG)
 
 ## Editor functions
 <b>Options</b> - Show/Hide options buttons.<br>
@@ -26,11 +26,11 @@ Visual structure<br>
 
 ## Edit coordinates mode
 In scene view witch enabled edit coordinates mode.<br>
-![coordsvisualedit](https://user-images.githubusercontent.com/22005013/31046883-9797f6fa-a609-11e7-8212-71df669ac722.JPG)
+![scene](https://user-images.githubusercontent.com/22005013/31079395-266a42ea-a78e-11e7-9485-cb1175f41459.JPG)
 
 ## Copy Vector property
 Optional method copy inspector value from Vector2.<br>
-In scripts enable line "#define CopyVectorProperty"
-<b>[CoordsFromVector(string vector2PropertyName)]</b><br>
+In scripts enable line "#define CopyVectorProperty"<br>
+Attribute: <b>[CoordsFromVector(string vector2PropertyName)]</b><br>
 On open inspector. If min & max equals zero then set values from vector.
  
