@@ -1,7 +1,7 @@
 ﻿/* Created by Str4tos. 2017 */
 
 // If not using Z-Axis then turn off the #define line
-#define CoordsIn3D
+//#define CoordsIn3D
 
 //#define CopyVectorProperty
 
@@ -28,6 +28,7 @@ public class ConstraintCoordEditor : PropertyDrawer
     private SerializedProperty min, max;
     private string displayName;
     private bool isCache = false;
+    private Color defaultColor;
 
     private static bool isLocalCoords;
     private static bool isShowOptions;
@@ -129,7 +130,6 @@ public class ConstraintCoordEditor : PropertyDrawer
     {
         CasheProperties(property);
 
-        GUI.color = Color.white;
         position.height = 16f;
         Rect contentPosition = EditorGUI.PrefixLabel(position, new GUIContent(displayName));
 
@@ -144,7 +144,6 @@ public class ConstraintCoordEditor : PropertyDrawer
 
         EditorGUI.indentLevel = 0;
         float onePart = contentPosition.width / 3;
-        GUI.skin.label.padding = new RectOffset(3, 3, 6, 6);
 
         contentPosition.width = onePart;
         ShowCoordValue(contentPosition, min, label);
@@ -152,7 +151,9 @@ public class ConstraintCoordEditor : PropertyDrawer
         contentPosition.x += onePart;
         ShowCoordValue(contentPosition, max, label);
         if (EditorApplication.isPlaying)
+        {
             return;
+        }
 
         contentPosition.width -= 10.0f;
         contentPosition.x += onePart + 10.0f;
@@ -171,7 +172,8 @@ public class ConstraintCoordEditor : PropertyDrawer
         }
 
         ShowOptions(position, property, contentPosition.y);
-        GUI.color = Color.white;
+
+        GUI.color = defaultColor;
     }
     public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
     {
@@ -197,6 +199,8 @@ public class ConstraintCoordEditor : PropertyDrawer
             property.Next(true);
             max = property.Copy();
             isCache = true;
+            if (!EditorApplication.isPlaying)
+                defaultColor = GUI.color;
 
             if (min.floatValue == 0.0f && max.floatValue == 0.0f)
             {

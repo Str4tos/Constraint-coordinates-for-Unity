@@ -21,6 +21,40 @@ public struct ConstraintCoord2D
         this.xAxis = xAxis;
         this.yAxis = yAxis;
     }
+
+    /// <summary>
+    /// Clamp position in range constraint.
+    /// </summary>
+    public Vector2 Clamp(Vector2 position)
+    {
+        xAxis.Clamp(position.x);
+        yAxis.Clamp(position.y);
+        return position;
+    }
+    /// <summary>
+    /// Clamp position in range constraint. Skip clamp if limit equal zero.
+    /// </summary>
+    public Vector2 ClampVerific(Vector2 position)
+    {
+        xAxis.ClampVerific(ref position.x);
+        yAxis.ClampVerific(ref position.y);
+        return position;
+    }
+    /// <summary>
+    /// Clamp position in range constraint. Skip clamp if limit equal zero.
+    /// </summary>
+    public void ClampVerific(ref Vector2 position)
+    {
+        xAxis.ClampVerific(ref position.x);
+        yAxis.ClampVerific(ref position.y);
+    }
+    /// <summary>
+    /// Return random position in range constraint.
+    /// </summary>
+    public Vector2 GetRandom()
+    {
+        return new Vector2(xAxis.GetRandom(), yAxis.GetRandom());
+    }
 }
 
 [System.Serializable]
@@ -48,6 +82,35 @@ public struct ConstraintCoord
     public float Clamp(float value)
     {
         return Mathf.Clamp(value, min, max);
+    }
+    /// <summary>
+    /// Clamp value in range between min and max. Skip clamp if limit equal zero.
+    /// </summary>
+    public float ClampVerific(float value)
+    {
+        if (min != 0.0 && value < min)
+        {
+            return min;
+        }
+        if (max != 0.0f && value > max)
+        {
+            return max;
+        }
+        return value;
+    }
+    /// <summary>
+    /// Clamp value in range between min and max. Skip clamp if limit equal zero.
+    /// </summary>
+    public void ClampVerific(ref float value)
+    {
+        if (min != 0.0 && value < min)
+        {
+            value = min;
+        }
+        if (max != 0.0f && value > max)
+        {
+            value = max;
+        }
     }
     /// <summary>
     /// Return random value in range between min and max.
