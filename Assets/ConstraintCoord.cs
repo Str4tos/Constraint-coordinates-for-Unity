@@ -163,6 +163,14 @@ public struct ConstraintCoord
     {
         return (value - max) > (min + offset - value);
     }
+    /// <summary>
+    /// Set minimum and maximum by center 'Value' +- offset.
+    /// </summary>
+    public void SetNearValue(float value, float offset)
+    {
+        min = value - offset;
+        max = value + offset;
+    }
 
     /// <summary>
     /// Transform minimum and maximum coordinates to world space from target.
