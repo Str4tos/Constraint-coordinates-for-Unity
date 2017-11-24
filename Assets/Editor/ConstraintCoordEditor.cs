@@ -28,7 +28,6 @@ public class ConstraintCoordEditor : PropertyDrawer
     private SerializedProperty min, max;
     private string displayName;
     private bool isCache = false;
-    private Color defaultColor;
 
     private static bool isLocalCoords;
     private static bool isShowOptions;
@@ -74,6 +73,9 @@ public class ConstraintCoordEditor : PropertyDrawer
 
                     result.min = RoundValue(Handles.Slider(minimumPoint, Vector3.left).x);
                     result.max = RoundValue(Handles.Slider(maximumPoint, Vector3.right).x);
+
+                    Handles.DrawLine(minimumPoint + Vector3.up, minimumPoint + Vector3.down);
+                    Handles.DrawLine(maximumPoint + Vector3.up, maximumPoint + Vector3.down);
                     break;
                 case Axis.YAxis:
                     minimumPoint.y = result.min;
@@ -81,6 +83,9 @@ public class ConstraintCoordEditor : PropertyDrawer
 
                     result.min = RoundValue(Handles.Slider(minimumPoint, Vector3.down).y);
                     result.max = RoundValue(Handles.Slider(maximumPoint, Vector3.up).y);
+
+                    Handles.DrawLine(minimumPoint + Vector3.right, minimumPoint + Vector3.left);
+                    Handles.DrawLine(maximumPoint + Vector3.right, maximumPoint + Vector3.left);
                     break;
 #if CoordsIn3D
                 case Axis.ZAxis:
@@ -89,13 +94,15 @@ public class ConstraintCoordEditor : PropertyDrawer
 
                     result.min = RoundValue(Handles.Slider(minimumPoint, Vector3.back).z);
                     result.max = RoundValue(Handles.Slider(maximumPoint, Vector3.forward).z);
+
+                    Handles.DrawLine(minimumPoint + Vector3.up, minimumPoint + Vector3.down);
+                    Handles.DrawLine(maximumPoint + Vector3.up, maximumPoint + Vector3.down);
                     break;
 #endif
             }
             Handles.color = Color.magenta;
             Handles.DrawLine(minimumPoint, maximumPoint);
-            Handles.DrawLine(minimumPoint + Vector3.up, minimumPoint + Vector3.down);
-            Handles.DrawLine(maximumPoint + Vector3.up, maximumPoint + Vector3.down);
+
 
             if (isLocalCoords)
                 result.TransformToLocal(targetTran);
@@ -157,23 +164,18 @@ public class ConstraintCoordEditor : PropertyDrawer
 
         contentPosition.width -= 10.0f;
         contentPosition.x += onePart + 10.0f;
-        if (isShowOptions)
+
+        if (isShowOptions != GUI.Toggle(contentPosition, isShowOptions, "Options", "Button"))
         {
-            GUI.color = Color.green;
-        }
-        if (GUI.Button(contentPosition, "Options"))
-        {
-            isShowOptions = !isShowOptions;
             if (isEdditMode)
             {
-                isEdditMode = false;
                 StopEdditMode();
             }
+            isShowOptions = !isShowOptions;
         }
 
         ShowOptions(position, property, contentPosition.y);
 
-        GUI.color = defaultColor;
     }
     public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
     {
@@ -199,8 +201,6 @@ public class ConstraintCoordEditor : PropertyDrawer
             property.Next(true);
             max = property.Copy();
             isCache = true;
-            if (!EditorApplication.isPlaying)
-                defaultColor = GUI.color;
 
             if (min.floatValue == 0.0f && max.floatValue == 0.0f)
             {
@@ -250,7 +250,6 @@ public class ConstraintCoordEditor : PropertyDrawer
         {
             Rect optionButtons = EditorGUI.IndentedRect(position);
             optionButtons.y = contentPositionY + 18.0f;
-            GUI.color = Color.white;
             float onePart =
 #if CoordsIn3D
                 optionButtons.width / 6.0f;
@@ -274,27 +273,24 @@ public class ConstraintCoordEditor : PropertyDrawer
                 }
 
             optionButtons.x += onePart;
-            if (GUI.Button(optionButtons, isLocalCoords ? "Local" : "World"))
+            if (isLocalCoords != GUI.Toggle(optionButtons, isLocalCoords, isLocalCoords ? "Local" : "World", "Button"))
             {
                 isLocalCoords = !isLocalCoords;
             }
 
-            if (isEdditMode)
-                GUI.color = Color.green;
-
             optionButtons.x += onePart;
-            if (GUI.Button(optionButtons, "XAxis"))
+            if (isEdditMode != GUI.Toggle(optionButtons, isEdditMode, "XAxis", "Button"))
             {
                 ToggleEdditMode(property, Axis.XAxis);
             }
             optionButtons.x += onePart;
-            if (GUI.Button(optionButtons, "YAxis"))
+            if (isEdditMode != GUI.Toggle(optionButtons, isEdditMode, "YAxis", "Button"))
             {
                 ToggleEdditMode(property, Axis.YAxis);
             }
 #if CoordsIn3D
             optionButtons.x += onePart;
-            if (GUI.Button(optionButtons, "ZAxis"))
+            if (isEdditMode != GUI.Toggle(optionButtons, isEdditMode, "ZAxis", "Button"))
             {
                 ToggleEdditMode(property, Axis.ZAxis);
             }
