@@ -25,7 +25,7 @@ public class ConstraintCoordEditor : PropertyDrawer
     }
 
     #region Variables
-    private SerializedProperty min, max;
+    private SerializedProperty minInstP, maxInstP;
     private string displayName;
     private bool isCache = false;
 
@@ -35,71 +35,44 @@ public class ConstraintCoordEditor : PropertyDrawer
 
     #region Edit mode
     private static bool isEdditMode;
-    private static SerializedProperty minProperty;
-    private static SerializedProperty maxProperty;
+    private static SerializedProperty minEdditedP;
+    private static SerializedProperty maxEdditedP;
     private static Transform targetTran;
-    private static Axis currAxis;
+    private static int currAxis;
     #endregion /Edit mode
     #endregion /Variables
 
     #region Edit coords Mode
-    public static void InitEditMode(SerializedProperty min, SerializedProperty max, Transform target, Axis direction)
-    {
-        isEdditMode = true;
-        minProperty = min;
-        maxProperty = max;
-        targetTran = target;
-        currAxis = direction;
 
-        SceneView.onSceneGUIDelegate += UpdateEditMode;
-        SceneView.RepaintAll();
-    }
     public static void UpdateEditMode(SceneView sceneView)
     {
         try
         {
             Vector3 minimumPoint = isLocalCoords ? targetTran.localPosition : targetTran.position;
             Vector3 maximumPoint = minimumPoint;
-            ConstraintCoord result = new ConstraintCoord(minProperty.floatValue, maxProperty.floatValue);
+            ConstraintCoord result = new ConstraintCoord(minEdditedP.floatValue, maxEdditedP.floatValue);
 
             if (isLocalCoords)
                 result.TransformToWorld(targetTran);
 
-            switch (currAxis)
+            minimumPoint[currAxis] = result.min;
+            maximumPoint[currAxis] = result.max;
+            Vector2 direction = Vector2.zero;
+            direction[currAxis] = 1.0f;
+            result.min = RoundValue(Handles.Slider(minimumPoint, -direction)[currAxis]);
+            result.max = RoundValue(Handles.Slider(maximumPoint, direction)[currAxis]);
+
+            if (currAxis == 1) // if YAxis
             {
-                default:
-                    minimumPoint.x = result.min;
-                    maximumPoint.x = result.max;
-
-                    result.min = RoundValue(Handles.Slider(minimumPoint, Vector3.left).x);
-                    result.max = RoundValue(Handles.Slider(maximumPoint, Vector3.right).x);
-
-                    Handles.DrawLine(minimumPoint + Vector3.up, minimumPoint + Vector3.down);
-                    Handles.DrawLine(maximumPoint + Vector3.up, maximumPoint + Vector3.down);
-                    break;
-                case Axis.YAxis:
-                    minimumPoint.y = result.min;
-                    maximumPoint.y = result.max;
-
-                    result.min = RoundValue(Handles.Slider(minimumPoint, Vector3.down).y);
-                    result.max = RoundValue(Handles.Slider(maximumPoint, Vector3.up).y);
-
-                    Handles.DrawLine(minimumPoint + Vector3.right, minimumPoint + Vector3.left);
-                    Handles.DrawLine(maximumPoint + Vector3.right, maximumPoint + Vector3.left);
-                    break;
-#if CoordsIn3D
-                case Axis.ZAxis:
-                    minimumPoint.z = result.min;
-                    maximumPoint.z = result.max;
-
-                    result.min = RoundValue(Handles.Slider(minimumPoint, Vector3.back).z);
-                    result.max = RoundValue(Handles.Slider(maximumPoint, Vector3.forward).z);
-
-                    Handles.DrawLine(minimumPoint + Vector3.up, minimumPoint + Vector3.down);
-                    Handles.DrawLine(maximumPoint + Vector3.up, maximumPoint + Vector3.down);
-                    break;
-#endif
+                Handles.DrawLine(minimumPoint + Vector3.right, minimumPoint + Vector3.left);
+                Handles.DrawLine(maximumPoint + Vector3.right, maximumPoint + Vector3.left);
             }
+            else // Equal for XAxis and ZAxis
+            {
+                Handles.DrawLine(minimumPoint + Vector3.up, minimumPoint + Vector3.down);
+                Handles.DrawLine(maximumPoint + Vector3.up, maximumPoint + Vector3.down);
+            }
+
             Handles.color = Color.magenta;
             Handles.DrawLine(minimumPoint, maximumPoint);
 
@@ -107,9 +80,9 @@ public class ConstraintCoordEditor : PropertyDrawer
             if (isLocalCoords)
                 result.TransformToLocal(targetTran);
 
-            minProperty.floatValue = result.min;
-            maxProperty.floatValue = result.max;
-            maxProperty.serializedObject.ApplyModifiedProperties();
+            minEdditedP.floatValue = result.min;
+            maxEdditedP.floatValue = result.max;
+            maxEdditedP.serializedObject.ApplyModifiedProperties();
         }
         catch
         {
@@ -118,12 +91,11 @@ public class ConstraintCoordEditor : PropertyDrawer
     }
     public static void StopEdditMode()
     {
-        isEdditMode = false;
-        minProperty = null;
-        maxProperty = null;
-        targetTran = null;
-
         SceneView.onSceneGUIDelegate -= UpdateEditMode;
+        isEdditMode = false;
+        minEdditedP = null;
+        maxEdditedP = null;
+        targetTran = null;
         SceneView.RepaintAll();
     }
 
@@ -135,7 +107,8 @@ public class ConstraintCoordEditor : PropertyDrawer
 
     public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
     {
-        CasheProperties(property);
+        if (!isCache)
+            CasheProperties(property);
 
         position.height = 16f;
         Rect contentPosition = EditorGUI.PrefixLabel(position, new GUIContent(displayName));
@@ -153,10 +126,10 @@ public class ConstraintCoordEditor : PropertyDrawer
         float onePart = contentPosition.width / 3;
 
         contentPosition.width = onePart;
-        ShowCoordValue(contentPosition, min, label);
+        ShowCoordValue(contentPosition, minInstP, label);
 
         contentPosition.x += onePart;
-        ShowCoordValue(contentPosition, max, label);
+        ShowCoordValue(contentPosition, maxInstP, label);
         if (EditorApplication.isPlaying)
         {
             return;
@@ -174,7 +147,8 @@ public class ConstraintCoordEditor : PropertyDrawer
             isShowOptions = !isShowOptions;
         }
 
-        ShowOptions(position, property, contentPosition.y);
+        if (isShowOptions)
+            ShowOptions(position, property, contentPosition.y);
 
     }
     public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
@@ -191,39 +165,36 @@ public class ConstraintCoordEditor : PropertyDrawer
 
     private void CasheProperties(SerializedProperty property)
     {
-        if (!isCache)
+        //get the name before it's gone
+        displayName = property.displayName;
+
+        property.Next(true);
+        minInstP = property.Copy();
+        property.Next(true);
+        maxInstP = property.Copy();
+        isCache = true;
+
+        if (minInstP.floatValue == 0.0f && maxInstP.floatValue == 0.0f)
         {
-            //get the name before it's gone
-            displayName = property.displayName;
-
-            property.Next(true);
-            min = property.Copy();
-            property.Next(true);
-            max = property.Copy();
-            isCache = true;
-
-            if (min.floatValue == 0.0f && max.floatValue == 0.0f)
-            {
 #if CopyVectorProperty
-                CoordsFromVector coordsFromVector = attribute as CoordsFromVector;
-                if (coordsFromVector != null)
+            CoordsFromVector coordsFromVector = attribute as CoordsFromVector;
+            if (coordsFromVector != null)
+            {
+                var searchProperty = property.serializedObject.FindProperty(coordsFromVector.originPropertyName);
+                if (searchProperty.propertyType == SerializedPropertyType.Vector2)
                 {
-                    var searchProperty = property.serializedObject.FindProperty(coordsFromVector.originPropertyName);
-                    if (searchProperty.propertyType == SerializedPropertyType.Vector2)
-                    {
-                        Vector2 searchVector = searchProperty.vector2Value;
-                        min.floatValue = searchVector.x;
-                        max.floatValue = searchVector.y;
-                        property.serializedObject.ApplyModifiedProperties();
-                    }
+                    Vector2 searchVector = searchProperty.vector2Value;
+                    min.floatValue = searchVector.x;
+                    max.floatValue = searchVector.y;
+                    property.serializedObject.ApplyModifiedProperties();
                 }
-#else
-                Vector3 worldPosition = ((Component)property.serializedObject.targetObject).transform.position;
-                min.floatValue = worldPosition.x;
-                max.floatValue = worldPosition.y;
-                property.serializedObject.ApplyModifiedProperties();
-#endif
             }
+#else
+            Vector3 worldPosition = ((Component)property.serializedObject.targetObject).transform.position;
+            minInstP.floatValue = worldPosition.x;
+            maxInstP.floatValue = worldPosition.y;
+            property.serializedObject.ApplyModifiedProperties();
+#endif
         }
     }
     private void ShowCoordValue(Rect contentPosition, SerializedProperty value, GUIContent label)
@@ -246,65 +217,64 @@ public class ConstraintCoordEditor : PropertyDrawer
     }
     private void ShowOptions(Rect position, SerializedProperty property, float contentPositionY)
     {
-        if (isShowOptions)
-        {
-            Rect optionButtons = EditorGUI.IndentedRect(position);
-            optionButtons.y = contentPositionY + 18.0f;
-            float onePart =
+        Rect optionButtons = EditorGUI.IndentedRect(position);
+        optionButtons.y = contentPositionY + 18.0f;
+        float onePart;
 #if CoordsIn3D
-                optionButtons.width / 6.0f;
+        onePart = optionButtons.width / 6.0f;
 #else
-                optionButtons.width / 5.0f;
+        onePart = optionButtons.width / 5.0f;
 #endif
-            optionButtons.width = onePart;
+        optionButtons.width = onePart;
 
-            if (!isEdditMode)
-                if (GUI.Button(optionButtons, "Copy"))
-                {
-                    copyValues = new Vector2(min.floatValue, max.floatValue);
-                }
-
-            optionButtons.x += onePart;
-            if (!isEdditMode && copyValues != Vector2.zero)
-                if (GUI.Button(optionButtons, "Paste"))
-                {
-                    min.floatValue = copyValues.x;
-                    max.floatValue = copyValues.y;
-                }
-
-            optionButtons.x += onePart;
-            if (isLocalCoords != GUI.Toggle(optionButtons, isLocalCoords, isLocalCoords ? "Local" : "World", "Button"))
+        if (!isEdditMode)
+            if (GUI.Button(optionButtons, "Copy"))
             {
-                isLocalCoords = !isLocalCoords;
+                copyValues = new Vector2(minInstP.floatValue, maxInstP.floatValue);
             }
 
-            optionButtons.x += onePart;
-            if (isEdditMode != GUI.Toggle(optionButtons, isEdditMode, "XAxis", "Button"))
+        optionButtons.x += onePart;
+        if (!isEdditMode && copyValues != Vector2.zero)
+            if (GUI.Button(optionButtons, "Paste"))
             {
-                ToggleEdditMode(property, Axis.XAxis);
+                minInstP.floatValue = copyValues.x;
+                maxInstP.floatValue = copyValues.y;
             }
-            optionButtons.x += onePart;
-            if (isEdditMode != GUI.Toggle(optionButtons, isEdditMode, "YAxis", "Button"))
-            {
-                ToggleEdditMode(property, Axis.YAxis);
-            }
+
+        optionButtons.x += onePart;
+        if (isLocalCoords != GUI.Toggle(optionButtons, isLocalCoords, isLocalCoords ? "Local" : "World", "Button"))
+        {
+            isLocalCoords = !isLocalCoords;
+        }
+
+        int axisCount;
 #if CoordsIn3D
-            optionButtons.x += onePart;
-            if (isEdditMode != GUI.Toggle(optionButtons, isEdditMode, "ZAxis", "Button"))
-            {
-                ToggleEdditMode(property, Axis.ZAxis);
-            }
+            axisCount = 3;
+#else
+        axisCount = 2;
 #endif
+        for (int i = 0; i < axisCount; i++)
+        {
+            optionButtons.x += onePart;
+            if (isEdditMode != GUI.Toggle(optionButtons, isEdditMode, ((Axis)i).ToString(), "Button"))
+            {
+                if (isEdditMode)
+                {
+                    StopEdditMode();
+                }
+                else
+                {
+                    isEdditMode = true;
+                    minEdditedP = minInstP;
+                    maxEdditedP = maxInstP;
+                    targetTran = ((Component)property.serializedObject.targetObject).transform;
+                    currAxis = i;
+
+                    SceneView.onSceneGUIDelegate += UpdateEditMode;
+                    SceneView.RepaintAll();
+                }
+            }
         }
     }
-    private void ToggleEdditMode(SerializedProperty property, Axis currAxis)
-    {
-        if (isEdditMode)
-            StopEdditMode();
-        else
-            InitEditMode(min, max, ((Component)property.serializedObject.targetObject).transform, currAxis);
-
-    }
-
 }
 
